@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      font-size: 14px;
+      color: #202124;
+      background: #fff;
+      padding: 16px;
+    }
+
+    /* Material Design Components */
+    .mdc-card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+      margin-bottom: 16px;
+      padding: 16px;
+    }
+
+    .mdc-card-header {
+      font-size: 16px;
+      font-weight: 500;
+      color: #202124;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mdc-card-header .material-icons {
+      font-size: 20px;
+      color: #5f6368;
+    }
+
+    .mdc-select {
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
+    .mdc-select label {
+      display: block;
+      font-size: 12px;
+      color: #5f6368;
+      margin-bottom: 4px;
+    }
+
+    .mdc-select select {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      background: #fff;
+      color: #202124;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .mdc-select select:focus {
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+    }
+
+    .mdc-select select:disabled {
+      background: #f1f3f4;
+      color: #80868b;
+      cursor: not-allowed;
+    }
+
+    .mdc-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .mdc-button--primary {
+      background: #1a73e8;
+      color: #fff;
+      width: 100%;
+    }
+
+    .mdc-button--primary:hover {
+      background: #1557b0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .mdc-button--primary:disabled {
+      background: #dadce0;
+      color: #80868b;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .mdc-button--secondary {
+      background: transparent;
+      color: #1a73e8;
+      border: 1px solid #dadce0;
+    }
+
+    .mdc-button--secondary:hover {
+      background: #f1f3f4;
+    }
+
+    .mdc-button--small {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    /* Info Box */
+    .info-box {
+      background: #e8f0fe;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .info-box .material-icons {
+      color: #1a73e8;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .info-box-content {
+      font-size: 13px;
+      color: #202124;
+    }
+
+    .info-box-content strong {
+      font-weight: 500;
+    }
+
+    /* Warning Box */
+    .warning-box {
+      background: #fef7e0;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .warning-box .material-icons {
+      color: #f9ab00;
+      font-size: 18px;
+    }
+
+    /* Error Box */
+    .error-box {
+      background: #fce8e6;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .error-box .material-icons {
+      color: #d93025;
+      font-size: 18px;
+    }
+
+    /* Success Box */
+    .success-box {
+      background: #e6f4ea;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .success-box .material-icons {
+      color: #1e8e3e;
+      font-size: 18px;
+    }
+
+    /* Progress */
+    .progress-container {
+      display: none;
+      margin-bottom: 16px;
+    }
+
+    .progress-container.active {
+      display: block;
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: #1a73e8;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      font-size: 13px;
+      color: #5f6368;
+      text-align: center;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 500;
+      color: #202124;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: #5f6368;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .stat-item.primary .stat-value {
+      color: #1a73e8;
+    }
+
+    .stat-item.success .stat-value {
+      color: #1e8e3e;
+    }
+
+    .stat-item.warning .stat-value {
+      color: #f9ab00;
+    }
+
+    .stat-item.error .stat-value {
+      color: #d93025;
+    }
+
+    /* Checkbox */
+    .mdc-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+
+    .mdc-checkbox input {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .mdc-checkbox span {
+      font-size: 13px;
+      color: #202124;
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: #e0e0e0;
+      margin: 16px 0;
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #fff;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Validation List */
+    .validation-list {
+      font-size: 12px;
+      max-height: 100px;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    .validation-item {
+      padding: 4px 0;
+      color: #5f6368;
+    }
+
+    .validation-item.error {
+      color: #d93025;
+    }
+
+    .validation-item.warning {
+      color: #f9ab00;
+    }
+
+    /* Hidden */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Button Row */
+    .button-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .button-row .mdc-button {
+      flex: 1;
+    }
+
+    /* Schedule Input */
+    .schedule-input {
+      display: none;
+      margin-top: 12px;
+    }
+
+    .schedule-input.active {
+      display: block;
+    }
+
+    .schedule-input input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #e0e0e0;
+      margin-bottom: 16px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      color: #5f6368;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      color: #202124;
+      background: #f8f9fa;
+    }
+
+    .tab.active {
+      color: #1a73e8;
+      border-bottom-color: #1a73e8;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div style="text-align: center; margin-bottom: 16px;">
+    <h1 style="font-size: 20px; font-weight: 500; color: #202124;">SheetMailer</h1>
+    <p style="font-size: 12px; color: #5f6368;">Mass email campaigns made easy</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" data-tab="compose">Compose</div>
+    <div class="tab" data-tab="stats">Stats</div>
+  </div>
+
+  <!-- Compose Tab -->
+  <div id="compose-tab" class="tab-content active">
+    <!-- Quota Info -->
+    <div class="info-box" id="quota-box">
+      <span class="material-icons">info</span>
+      <div class="info-box-content">
+        <strong>Daily Quota:</strong> <span id="quota-remaining">Loading...</span> emails remaining
+      </div>
+    </div>
+
+    <!-- Sheet Info Card -->
+    <div class="mdc-card">
+      <div class="mdc-card-header">
+        <span class="material-icons">table_chart</span>
+        Sheet Info
+      </div>
+      <div id="sheet-info">
+        <div class="info-box-content">
+          <div><strong>Sheet:</strong> <span id="sheet-name">-</span></div>
+          <div><strong>Recipients:</strong> <span id="row-count">-</span></div>
+          <div><strong>Email Column:</strong> <span id="email-column">-</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email Setup Card -->
+    <div class="mdc-card">
+      <div class="mdc-card-header">
+        <span class="material-icons">email</span>
+        Email Setup
+      </div>
+
+      <!-- Draft Selection -->
+      <div class="mdc-select">
+        <label>Email Template (Gmail Draft)</label>
+        <select id="draft-select" disabled>
+          <option value="">Loading drafts...</option>
+        </select>
+      </div>
+
+      <!-- Alias Selection -->
+      <div class="mdc-select">
+        <label>Send From</label>
+        <select id="alias-select" disabled>
+          <option value="">Loading aliases...</option>
+        </select>
+      </div>
+
+      <!-- Filter Options -->
+      <div class="mdc-select">
+        <label>Filter Column (Optional)</label>
+        <select id="filter-column-select">
+          <option value="-1">Send to all rows</option>
+        </select>
+      </div>
+
+      <div class="mdc-select" id="filter-value-container" style="display: none;">
+        <label>Filter Value</label>
+        <input type="text" id="filter-value" placeholder="e.g., Yes, Send, Active" style="width: 100%; padding: 10px 12px; font-size: 14px; border: 1px solid #dadce0; border-radius: 4px;">
+      </div>
+
+      <!-- Attachment Column -->
+      <div class="mdc-select">
+        <label>Attachment Column (Google Drive links)</label>
+        <select id="attachment-column-select">
+          <option value="-1">No attachments</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Validation Results -->
+    <div id="validation-results" class="hidden">
+      <div class="mdc-card">
+        <div class="mdc-card-header">
+          <span class="material-icons">fact_check</span>
+          Validation Results
+        </div>
+        <div class="stats-grid">
+          <div class="stat-item success">
+            <div class="stat-value" id="valid-count">0</div>
+            <div class="stat-label">Valid</div>
+          </div>
+          <div class="stat-item error">
+            <div class="stat-value" id="invalid-count">0</div>
+            <div class="stat-label">Invalid</div>
+          </div>
+        </div>
+        <div id="duplicate-warning" class="warning-box hidden">
+          <span class="material-icons">warning</span>
+          <div class="info-box-content">
+            <strong>Duplicates found:</strong> <span id="duplicate-count">0</span> duplicate emails will be skipped.
+          </div>
+        </div>
+        <div id="invalid-list-container" class="hidden">
+          <div class="validation-list" id="invalid-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-container" id="progress-container">
+      <div class="mdc-card">
+        <div class="mdc-card-header">
+          <span class="material-icons">send</span>
+          Sending Emails...
+        </div>
+        <div class="progress-bar">
+          <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-text" id="progress-text">Preparing...</div>
+      </div>
+    </div>
+
+    <!-- Send Results -->
+    <div id="send-results" class="hidden">
+      <div class="success-box">
+        <span class="material-icons">check_circle</span>
+        <div class="info-box-content">
+          <strong>Campaign Complete!</strong>
+          <div id="results-summary"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="button-row">
+      <button class="mdc-button mdc-button--secondary mdc-button--small" onclick="validateRecipients()">
+        <span class="material-icons" style="font-size: 16px;">check</span>
+        Validate
+      </button>
+      <button class="mdc-button mdc-button--secondary mdc-button--small" onclick="sendTestEmail()">
+        <span class="material-icons" style="font-size: 16px;">science</span>
+        Test
+      </button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Schedule Option -->
+    <label class="mdc-checkbox">
+      <input type="checkbox" id="schedule-checkbox" onchange="toggleSchedule()">
+      <span>Schedule for later</span>
+    </label>
+
+    <div class="schedule-input" id="schedule-input">
+      <input type="datetime-local" id="schedule-datetime">
+    </div>
+
+    <!-- Send Button -->
+    <button class="mdc-button mdc-button--primary" id="send-button" onclick="startCampaign()">
+      <span class="material-icons">send</span>
+      <span id="send-button-text">Send Campaign</span>
+    </button>
+  </div>
+
+  <!-- Stats Tab -->
+  <div id="stats-tab" class="tab-content">
+    <div class="mdc-card">
+      <div class="mdc-card-header">
+        <span class="material-icons">analytics</span>
+        Campaign Statistics
+      </div>
+      <div class="stats-grid">
+        <div class="stat-item primary">
+          <div class="stat-value" id="stats-sent">0</div>
+          <div class="stat-label">Sent</div>
+        </div>
+        <div class="stat-item success">
+          <div class="stat-value" id="stats-open-rate">0%</div>
+          <div class="stat-label">Open Rate</div>
+        </div>
+        <div class="stat-item warning">
+          <div class="stat-value" id="stats-click-rate">0%</div>
+          <div class="stat-label">Click Rate</div>
+        </div>
+        <div class="stat-item error">
+          <div class="stat-value" id="stats-failed">0</div>
+          <div class="stat-label">Failed</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="font-size: 13px; color: #5f6368;">
+        <div style="margin-bottom: 8px;">
+          <strong>Total Opens:</strong> <span id="stats-total-opens">0</span>
+          (<span id="stats-unique-opens">0</span> unique)
+        </div>
+        <div>
+          <strong>Total Clicks:</strong> <span id="stats-total-clicks">0</span>
+          (<span id="stats-unique-clicks">0</span> unique)
+        </div>
+      </div>
+    </div>
+
+    <button class="mdc-button mdc-button--secondary" onclick="refreshStats()" style="width: 100%;">
+      <span class="material-icons">refresh</span>
+      Refresh Stats
+    </button>
+  </div>
+
+  <script>
+    // State
+    let sheetInfo = null;
+    let drafts = [];
+    let aliases = [];
+    let validationResults = null;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', init);
+
+    function init() {
+      loadSheetInfo();
+      loadDrafts();
+      loadAliases();
+      loadQuota();
+      loadSavedSettings();
+      setupTabs();
+    }
+
+    // Tab handling
+    function setupTabs() {
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          tab.classList.add('active');
+          document.getElementById(tab.dataset.tab + '-tab').classList.add('active');
+
+          if (tab.dataset.tab === 'stats') {
+            refreshStats();
+          }
+        });
+      });
+    }
+
+    // Load sheet info
+    function loadSheetInfo() {
+      google.script.run
+        .withSuccessHandler(info => {
+          sheetInfo = info;
+          document.getElementById('sheet-name').textContent = info.sheetName;
+          document.getElementById('row-count').textContent = info.rowCount;
+          document.getElementById('email-column').textContent = info.emailColumnName || 'Not detected';
+
+          // Populate filter and attachment column dropdowns
+          const filterSelect = document.getElementById('filter-column-select');
+          const attachSelect = document.getElementById('attachment-column-select');
+
+          info.headers.forEach((header, index) => {
+            if (header) {
+              const option1 = document.createElement('option');
+              option1.value = index;
+              option1.textContent = header;
+              filterSelect.appendChild(option1);
+
+              const option2 = document.createElement('option');
+              option2.value = index;
+              option2.textContent = header;
+              attachSelect.appendChild(option2);
+            }
+          });
+
+          if (info.emailColumnIndex < 0) {
+            showError('Could not detect email column. Please ensure a column is named "Email" or similar.');
+          }
+        })
+        .withFailureHandler(showError)
+        .getSheetInfo();
+    }
+
+    // Load Gmail drafts
+    function loadDrafts() {
+      const select = document.getElementById('draft-select');
+      google.script.run
+        .withSuccessHandler(result => {
+          drafts = result;
+          select.innerHTML = '<option value="">Select a draft...</option>';
+          drafts.forEach(draft => {
+            const option = document.createElement('option');
+            option.value = draft.id;
+            option.textContent = draft.subject;
+            select.appendChild(option);
+          });
+          select.disabled = false;
+        })
+        .withFailureHandler(err => {
+          select.innerHTML = '<option value="">Failed to load drafts</option>';
+          showError(err);
+        })
+        .getGmailDrafts();
+    }
+
+    // Load Gmail aliases
+    function loadAliases() {
+      const select = document.getElementById('alias-select');
+      google.script.run
+        .withSuccessHandler(result => {
+          aliases = result;
+          select.innerHTML = '';
+          aliases.forEach(alias => {
+            const option = document.createElement('option');
+            option.value = alias.email;
+            option.textContent = alias.isPrimary ? alias.email + ' (Primary)' : alias.email;
+            select.appendChild(option);
+          });
+          select.disabled = false;
+        })
+        .withFailureHandler(err => {
+          select.innerHTML = '<option value="">Failed to load aliases</option>';
+        })
+        .getGmailAliases();
+    }
+
+    // Load quota
+    function loadQuota() {
+      google.script.run
+        .withSuccessHandler(quota => {
+          document.getElementById('quota-remaining').textContent = quota;
+          if (quota < 10) {
+            document.getElementById('quota-box').classList.remove('info-box');
+            document.getElementById('quota-box').classList.add('warning-box');
+          }
+        })
+        .getRemainingQuota();
+    }
+
+    // Load saved settings
+    function loadSavedSettings() {
+      google.script.run
+        .withSuccessHandler(settings => {
+          if (settings) {
+            if (settings.draftId) {
+              document.getElementById('draft-select').value = settings.draftId;
+            }
+            if (settings.aliasEmail) {
+              document.getElementById('alias-select').value = settings.aliasEmail;
+            }
+          }
+        })
+        .getSavedSettings();
+    }
+
+    // Filter column change handler
+    document.getElementById('filter-column-select').addEventListener('change', function() {
+      const container = document.getElementById('filter-value-container');
+      container.style.display = this.value === '-1' ? 'none' : 'block';
+    });
+
+    // Toggle schedule input
+    function toggleSchedule() {
+      const input = document.getElementById('schedule-input');
+      const buttonText = document.getElementById('send-button-text');
+      const isScheduled = document.getElementById('schedule-checkbox').checked;
+
+      input.classList.toggle('active', isScheduled);
+      buttonText.textContent = isScheduled ? 'Schedule Campaign' : 'Send Campaign';
+
+      if (isScheduled) {
+        // Set default to tomorrow at 9 AM
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(9, 0, 0, 0);
+        document.getElementById('schedule-datetime').value = tomorrow.toISOString().slice(0, 16);
+      }
+    }
+
+    // Validate recipients
+    function validateRecipients() {
+      if (!sheetInfo || sheetInfo.emailColumnIndex < 0) {
+        showError('Email column not detected');
+        return;
+      }
+
+      const options = {
+        emailColumnIndex: sheetInfo.emailColumnIndex,
+        filterColumnIndex: parseInt(document.getElementById('filter-column-select').value),
+        filterValue: document.getElementById('filter-value').value
+      };
+
+      google.script.run
+        .withSuccessHandler(results => {
+          validationResults = results;
+          showValidationResults(results);
+        })
+        .withFailureHandler(showError)
+        .validateRecipients(options);
+    }
+
+    // Show validation results
+    function showValidationResults(results) {
+      const container = document.getElementById('validation-results');
+      container.classList.remove('hidden');
+
+      document.getElementById('valid-count').textContent = results.valid.length;
+      document.getElementById('invalid-count').textContent = results.invalid.length;
+
+      // Duplicates warning
+      const dupWarning = document.getElementById('duplicate-warning');
+      if (results.duplicates.length > 0) {
+        dupWarning.classList.remove('hidden');
+        document.getElementById('duplicate-count').textContent = results.duplicates.length;
+      } else {
+        dupWarning.classList.add('hidden');
+      }
+
+      // Invalid list
+      const invalidContainer = document.getElementById('invalid-list-container');
+      const invalidList = document.getElementById('invalid-list');
+      if (results.invalid.length > 0) {
+        invalidContainer.classList.remove('hidden');
+        invalidList.innerHTML = results.invalid.map(inv =>
+          `<div class="validation-item error">Row ${inv.row}: ${inv.email}</div>`
+        ).join('');
+      } else {
+        invalidContainer.classList.add('hidden');
+      }
+    }
+
+    // Send test email
+    function sendTestEmail() {
+      const draftId = document.getElementById('draft-select').value;
+      if (!draftId) {
+        showError('Please select an email template first');
+        return;
+      }
+
+      const testEmail = prompt('Enter email address for test:');
+      if (!testEmail) return;
+
+      const options = {
+        draftId: draftId,
+        aliasEmail: document.getElementById('alias-select').value,
+        isTest: true,
+        testEmail: testEmail
+      };
+
+      google.script.run
+        .withSuccessHandler(result => {
+          alert('Test email sent to ' + testEmail);
+        })
+        .withFailureHandler(showError)
+        .sendCampaign(options);
+    }
+
+    // Start campaign
+    function startCampaign() {
+      const draftId = document.getElementById('draft-select').value;
+      if (!draftId) {
+        showError('Please select an email template');
+        return;
+      }
+
+      if (!sheetInfo || sheetInfo.emailColumnIndex < 0) {
+        showError('Email column not detected');
+        return;
+      }
+
+      // Confirm
+      if (!confirm('Are you sure you want to send this campaign?')) {
+        return;
+      }
+
+      const isScheduled = document.getElementById('schedule-checkbox').checked;
+      const options = {
+        draftId: draftId,
+        aliasEmail: document.getElementById('alias-select').value,
+        filterColumnIndex: parseInt(document.getElementById('filter-column-select').value),
+        filterValue: document.getElementById('filter-value').value,
+        attachmentColumnIndex: parseInt(document.getElementById('attachment-column-select').value)
+      };
+
+      // Save settings
+      google.script.run.saveSettings({
+        draftId: draftId,
+        aliasEmail: options.aliasEmail
+      });
+
+      if (isScheduled) {
+        const scheduledTime = document.getElementById('schedule-datetime').value;
+        if (!scheduledTime) {
+          showError('Please select a schedule time');
+          return;
+        }
+
+        google.script.run
+          .withSuccessHandler(result => {
+            alert('Campaign scheduled for ' + new Date(scheduledTime).toLocaleString());
+          })
+          .withFailureHandler(showError)
+          .scheduleCampaign(options, scheduledTime);
+      } else {
+        // Show progress
+        showProgress();
+
+        google.script.run
+          .withSuccessHandler(result => {
+            hideProgress();
+            showResults(result);
+            loadQuota(); // Refresh quota
+            refreshStats();
+          })
+          .withFailureHandler(err => {
+            hideProgress();
+            showError(err);
+          })
+          .sendCampaign(options);
+      }
+    }
+
+    // Progress UI
+    function showProgress() {
+      document.getElementById('progress-container').classList.add('active');
+      document.getElementById('send-button').disabled = true;
+      document.getElementById('send-results').classList.add('hidden');
+    }
+
+    function hideProgress() {
+      document.getElementById('progress-container').classList.remove('active');
+      document.getElementById('send-button').disabled = false;
+    }
+
+    function updateProgress(sent, total) {
+      const percent = Math.round((sent / total) * 100);
+      document.getElementById('progress-fill').style.width = percent + '%';
+      document.getElementById('progress-text').textContent = `Sending ${sent} of ${total}...`;
+    }
+
+    // Show results
+    function showResults(result) {
+      const container = document.getElementById('send-results');
+      container.classList.remove('hidden');
+
+      const summary = document.getElementById('results-summary');
+      if (result.results) {
+        const r = result.results;
+        summary.innerHTML = `
+          Sent: ${r.sent} | Failed: ${r.failed}
+          ${r.scheduled > 0 ? `<br>Scheduled for later: ${r.scheduled}` : ''}
+        `;
+      }
+    }
+
+    // Refresh stats
+    function refreshStats() {
+      google.script.run
+        .withSuccessHandler(stats => {
+          document.getElementById('stats-sent').textContent = stats.sent;
+          document.getElementById('stats-failed').textContent = stats.failed;
+          document.getElementById('stats-open-rate').textContent = stats.openRate;
+          document.getElementById('stats-click-rate').textContent = stats.clickRate;
+          document.getElementById('stats-total-opens').textContent = stats.totalOpens;
+          document.getElementById('stats-unique-opens').textContent = stats.uniqueOpens;
+          document.getElementById('stats-total-clicks').textContent = stats.totalClicks;
+          document.getElementById('stats-unique-clicks').textContent = stats.uniqueClicks;
+        })
+        .getCampaignStats();
+    }
+
+    // Error display
+    function showError(error) {
+      const message = typeof error === 'string' ? error : error.message || 'An error occurred';
+      alert('Error: ' + message);
+    }
+  </script>
+</body>
+</html>

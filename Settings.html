@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      font-size: 14px;
+      color: #202124;
+      padding: 24px;
+    }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      color: #202124;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #5f6368;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: #5f6368;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"],
+    input[type="url"],
+    input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #80868b;
+      margin-top: 4px;
+    }
+
+    .info-box {
+      background: #e8f0fe;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .info-box .material-icons {
+      color: #1a73e8;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .info-box-content {
+      font-size: 13px;
+      color: #202124;
+    }
+
+    .warning-box {
+      background: #fef7e0;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .warning-box .material-icons {
+      color: #f9ab00;
+      font-size: 18px;
+    }
+
+    .success-box {
+      background: #e6f4ea;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .success-box .material-icons {
+      color: #1e8e3e;
+      font-size: 18px;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .btn {
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #1557b0;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #1a73e8;
+      border: 1px solid #dadce0;
+    }
+
+    .btn-secondary:hover {
+      background: #f1f3f4;
+    }
+
+    .divider {
+      height: 1px;
+      background: #e0e0e0;
+      margin: 20px 0;
+    }
+
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-active {
+      background: #e6f4ea;
+      color: #1e8e3e;
+    }
+
+    .status-inactive {
+      background: #fce8e6;
+      color: #d93025;
+    }
+
+    .code-block {
+      background: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 12px;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 12px;
+      word-break: break-all;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h2>SheetMailer Settings</h2>
+
+  <!-- Tracking Setup -->
+  <div class="section">
+    <div class="section-title">Email Tracking</div>
+
+    <div id="tracking-status">
+      <!-- Will be populated by JS -->
+    </div>
+
+    <div class="form-group">
+      <label>Tracking Web App URL</label>
+      <input type="url" id="tracking-url" placeholder="https://script.google.com/macros/s/.../exec">
+      <p class="help-text">Deploy this script as a web app and paste the URL here.</p>
+    </div>
+
+    <div class="info-box">
+      <span class="material-icons">info</span>
+      <div class="info-box-content">
+        <strong>How to enable tracking:</strong><br>
+        1. Go to Deploy > New deployment<br>
+        2. Select "Web app"<br>
+        3. Execute as: "Me"<br>
+        4. Who has access: "Anyone"<br>
+        5. Copy the URL and paste it above
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Gmail API Setup -->
+  <div class="section">
+    <div class="section-title">Gmail Aliases</div>
+
+    <div class="info-box">
+      <span class="material-icons">info</span>
+      <div class="info-box-content">
+        To send from aliases, you need to enable the Gmail API:<br>
+        1. Go to Services > Add a service<br>
+        2. Search for "Gmail API"<br>
+        3. Click "Add"<br>
+        4. Re-open the sidebar to see your aliases
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Tracking Data -->
+  <div class="section">
+    <div class="section-title">Tracking Data</div>
+
+    <div id="tracking-stats">
+      <p>Loading statistics...</p>
+    </div>
+
+    <div style="margin-top: 12px;">
+      <button class="btn btn-secondary" onclick="cleanupData()" style="font-size: 12px; padding: 8px 16px;">
+        <span class="material-icons" style="font-size: 14px; vertical-align: middle;">delete_sweep</span>
+        Clean Up Old Data
+      </button>
+      <p class="help-text">Removes tracking data older than 90 days.</p>
+    </div>
+  </div>
+
+  <div class="button-row">
+    <button class="btn btn-secondary" onclick="google.script.host.close()">Cancel</button>
+    <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+  </div>
+
+  <script>
+    // Load current settings
+    document.addEventListener('DOMContentLoaded', function() {
+      loadTrackingUrl();
+      loadTrackingStats();
+    });
+
+    function loadTrackingUrl() {
+      google.script.run
+        .withSuccessHandler(url => {
+          document.getElementById('tracking-url').value = url || '';
+          updateTrackingStatus(!!url);
+        })
+        .getTrackingWebAppUrl();
+    }
+
+    function loadTrackingStats() {
+      google.script.run
+        .withSuccessHandler(stats => {
+          const container = document.getElementById('tracking-stats');
+          container.innerHTML = `
+            <div style="font-size: 13px; color: #5f6368;">
+              <div style="margin-bottom: 4px;">
+                <strong>Tracked Emails:</strong> ${stats.totalTrackedEmails}
+              </div>
+              <div>
+                <strong>Active Spreadsheets:</strong> ${stats.uniqueSpreadsheets}
+              </div>
+            </div>
+          `;
+        })
+        .withFailureHandler(err => {
+          document.getElementById('tracking-stats').innerHTML =
+            '<p style="color: #d93025;">Failed to load statistics</p>';
+        })
+        .getTrackingStats();
+    }
+
+    function updateTrackingStatus(isActive) {
+      const container = document.getElementById('tracking-status');
+      if (isActive) {
+        container.innerHTML = `
+          <div class="success-box">
+            <span class="material-icons">check_circle</span>
+            <div class="info-box-content">
+              <strong>Tracking is active</strong><br>
+              Open and click tracking is enabled for your campaigns.
+            </div>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="warning-box">
+            <span class="material-icons">warning</span>
+            <div class="info-box-content">
+              <strong>Tracking is not configured</strong><br>
+              Deploy the web app and add the URL below to enable tracking.
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function saveSettings() {
+      const trackingUrl = document.getElementById('tracking-url').value.trim();
+
+      google.script.run
+        .withSuccessHandler(() => {
+          alert('Settings saved successfully!');
+          google.script.host.close();
+        })
+        .withFailureHandler(err => {
+          alert('Error saving settings: ' + err.message);
+        })
+        .setTrackingWebAppUrl(trackingUrl);
+    }
+
+    function cleanupData() {
+      if (!confirm('This will remove tracking data older than 90 days. Continue?')) {
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(deleted => {
+          alert('Cleaned up ' + deleted + ' old tracking records.');
+          loadTrackingStats();
+        })
+        .withFailureHandler(err => {
+          alert('Error: ' + err.message);
+        })
+        .cleanupOldTrackingData();
+    }
+  </script>
+</body>
+</html>

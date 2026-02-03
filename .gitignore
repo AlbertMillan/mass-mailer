@@ -1,0 +1,35 @@
+# IDE and editor files
+.idea/
+.vscode/
+.claude/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node modules (if using clasp)
+node_modules/
+
+# Environment and secrets
+.env
+.env.local
+*.env
+
+# Clasp files
+.clasprc.json
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
