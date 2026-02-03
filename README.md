@@ -98,6 +98,29 @@ After sending, the sheet will update with:
 
 View aggregate stats in the **Stats** tab of the sidebar.
 
+## Multiple Campaigns
+
+Each sheet in your spreadsheet can serve as an independent campaign with its own recipients and tracking data.
+
+### Running Campaigns in Parallel
+
+- **Tracking is independent**: You can run a campaign on Sheet A, then immediately start another on Sheet B. Opens and clicks are tracked separately for each sheet, even while both campaigns are active.
+- **Stats are per-sheet**: Switch to any sheet and view its campaign stats independently.
+
+### Sequential Email Sending
+
+While tracking runs in parallel, the email sending process is sequential:
+- You must wait for one `sendCampaign()` operation to complete before starting another
+- Google Apps Script is single-threaded, so simultaneous sending is not supported
+- Once sending completes, you're free to start the next campaign while tracking continues for all previous ones
+
+### Workflow Example
+
+1. Switch to **Sheet A** → Send campaign → Emails sent
+2. Switch to **Sheet B** → Send campaign → Emails sent
+3. Over the following days, recipients open emails from both campaigns
+4. Each sheet's tracking columns update independently
+
 ## Quotas & Limits
 
 | Account Type | Daily Email Limit |
