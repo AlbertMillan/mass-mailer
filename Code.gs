@@ -36,14 +36,35 @@ const CONFIG = {
   STATUS: {
     PENDING: 'PENDING',
     SENT: 'SENT',
+    OPEN: 'OPEN',
     FAILED: 'FAILED',
     SCHEDULED: 'SCHEDULED',
     INVALID: 'INVALID'
+  },
+  STATUS_COLORS: {
+    PENDING: '#E0E0E0',   // Light Gray
+    SENT: '#A8D4F0',      // Light Blue
+    OPEN: '#B7E1CD',      // Light Green
+    FAILED: '#F4CCCC',    // Light Red
+    SCHEDULED: '#FFE599', // Light Yellow
+    INVALID: '#D9D2E9'    // Light Purple
   },
   THROTTLE_DELAY: 1000, // 1 second between emails
   EMAIL_COLUMN_NAMES: ['email', 'e-mail', 'email address', 'emailaddress', 'mail'],
   MERGE_TAG_REGEX: /\{\{([^}]+)\}\}/g
 };
+
+/**
+ * Set status value and background color for a cell
+ */
+function setStatusWithColor(sheet, row, col, status) {
+  const cell = sheet.getRange(row, col);
+  cell.setValue(status);
+  const color = CONFIG.STATUS_COLORS[status];
+  if (color) {
+    cell.setBackground(color);
+  }
+}
 
 // ==================== DATA RETRIEVAL ====================
 
@@ -514,7 +535,7 @@ function sendCampaign(options) {
       });
 
       // Update sheet
-      sheet.getRange(rowIndex, statusColIndex + 1).setValue(CONFIG.STATUS.SENT);
+      setStatusWithColor(sheet, rowIndex, statusColIndex + 1, CONFIG.STATUS.SENT);
       sheet.getRange(rowIndex, sentAtColIndex + 1).setValue(new Date());
       sheet.getRange(rowIndex, opensColIndex + 1).setValue(0);
       sheet.getRange(rowIndex, clicksColIndex + 1).setValue(0);
@@ -539,13 +560,13 @@ function sendCampaign(options) {
     } catch (e) {
       results.failed++;
       results.errors.push({ row: rowIndex, email: recipient.email, error: e.message });
-      sheet.getRange(rowIndex, statusColIndex + 1).setValue(CONFIG.STATUS.FAILED);
+      setStatusWithColor(sheet, rowIndex, statusColIndex + 1, CONFIG.STATUS.FAILED);
     }
   }
 
   // Mark invalid rows
   validation.invalid.forEach(inv => {
-    sheet.getRange(inv.row, statusColIndex + 1).setValue(CONFIG.STATUS.INVALID);
+    setStatusWithColor(sheet, inv.row, statusColIndex + 1, CONFIG.STATUS.INVALID);
   });
 
   return {
@@ -626,6 +647,7 @@ function recordOpen(trackingId) {
 
     if (sheet) {
       const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      const statusColIndex = headers.findIndex(h => h === 'Status');
       const opensColIndex = headers.findIndex(h => h === 'Opens');
       const lastOpenedColIndex = headers.findIndex(h => h === 'Last Opened');
 
@@ -636,6 +658,14 @@ function recordOpen(trackingId) {
 
       if (lastOpenedColIndex >= 0) {
         sheet.getRange(data.rowIndex, lastOpenedColIndex + 1).setValue(new Date());
+      }
+
+      // Update status to OPEN on first open
+      if (statusColIndex >= 0) {
+        const currentStatus = sheet.getRange(data.rowIndex, statusColIndex + 1).getValue();
+        if (currentStatus === CONFIG.STATUS.SENT) {
+          setStatusWithColor(sheet, data.rowIndex, statusColIndex + 1, CONFIG.STATUS.OPEN);
+        }
       }
     }
   } catch (e) {
@@ -770,6 +800,7 @@ function getCampaignStats() {
   const stats = {
     total: data.length - 1,
     sent: 0,
+    open: 0,
     failed: 0,
     pending: 0,
     invalid: 0,
@@ -789,6 +820,9 @@ function getCampaignStats() {
       case CONFIG.STATUS.SENT:
         stats.sent++;
         break;
+      case CONFIG.STATUS.OPEN:
+        stats.open++;
+        break;
       case CONFIG.STATUS.FAILED:
         stats.failed++;
         break;
@@ -805,10 +839,11 @@ function getCampaignStats() {
     if (clicks > 0) stats.uniqueClicks++;
   }
 
-  // Calculate rates
-  if (stats.sent > 0) {
-    stats.openRate = ((stats.uniqueOpens / stats.sent) * 100).toFixed(1) + '%';
-    stats.clickRate = ((stats.uniqueClicks / stats.sent) * 100).toFixed(1) + '%';
+  // Calculate rates (sent + open = total delivered)
+  const totalDelivered = stats.sent + stats.open;
+  if (totalDelivered > 0) {
+    stats.openRate = ((stats.uniqueOpens / totalDelivered) * 100).toFixed(1) + '%';
+    stats.clickRate = ((stats.uniqueClicks / totalDelivered) * 100).toFixed(1) + '%';
   } else {
     stats.openRate = '0%';
     stats.clickRate = '0%';
@@ -862,10 +897,11 @@ function showStatsDialog() {
     </style>
     <div class="stat"><span class="label">Total Recipients:</span> ${stats.total}</div>
     <div class="stat"><span class="label">Sent:</span> ${stats.sent}</div>
+    <div class="stat"><span class="label">Opened:</span> ${stats.open}</div>
     <div class="stat"><span class="label">Failed:</span> ${stats.failed}</div>
     <div class="stat"><span class="label">Open Rate:</span> ${stats.openRate} (${stats.uniqueOpens} unique opens)</div>
     <div class="stat"><span class="label">Click Rate:</span> ${stats.clickRate} (${stats.uniqueClicks} unique clicks)</div>
-  `).setWidth(400).setHeight(200);
+  `).setWidth(400).setHeight(220);
 
   SpreadsheetApp.getUi().showModalDialog(html, 'Campaign Statistics');
 }
