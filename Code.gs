@@ -32,7 +32,7 @@ function showSidebar() {
 // ==================== CONFIGURATION ====================
 
 const CONFIG = {
-  TRACKING_COLUMNS: ['Status', 'Sent At', 'Opens', 'Clicks', 'Last Opened'],
+  TRACKING_COLUMNS: ['Status', 'Sent At', 'Opens', 'Clicks', 'Link Clicks', 'Last Opened'],
   STATUS: {
     PENDING: 'PENDING',
     SENT: 'SENT',
@@ -427,6 +427,7 @@ function sendCampaign(options) {
   const sentAtColIndex = updatedHeaders.findIndex(h => h === 'Sent At');
   const opensColIndex = updatedHeaders.findIndex(h => h === 'Opens');
   const clicksColIndex = updatedHeaders.findIndex(h => h === 'Clicks');
+  const linkClicksColIndex = updatedHeaders.findIndex(h => h === 'Link Clicks');
   const trackingIdColIndex = ensureTrackingIdColumn(sheet, updatedHeaders);
 
   // Validate recipients
@@ -539,6 +540,7 @@ function sendCampaign(options) {
       sheet.getRange(rowIndex, sentAtColIndex + 1).setValue(new Date());
       sheet.getRange(rowIndex, opensColIndex + 1).setValue(0);
       sheet.getRange(rowIndex, clicksColIndex + 1).setValue(0);
+      sheet.getRange(rowIndex, linkClicksColIndex + 1).setValue('{}');
       sheet.getRange(rowIndex, trackingIdColIndex + 1).setValue(trackingId);
 
       // Store tracking data
@@ -675,8 +677,10 @@ function recordOpen(trackingId) {
 
 /**
  * Record click event
+ * @param {string} trackingId - The tracking ID for the email
+ * @param {string} clickedUrl - The URL that was clicked (optional, for per-link tracking)
  */
-function recordClick(trackingId) {
+function recordClick(trackingId, clickedUrl) {
   const data = getTrackingData(trackingId);
   if (!data) return;
 
@@ -688,10 +692,34 @@ function recordClick(trackingId) {
     if (sheet) {
       const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
       const clicksColIndex = headers.findIndex(h => h === 'Clicks');
+      const linkClicksColIndex = headers.findIndex(h => h === 'Link Clicks');
 
+      // Increment total clicks count
       if (clicksColIndex >= 0) {
         const currentClicks = sheet.getRange(data.rowIndex, clicksColIndex + 1).getValue() || 0;
         sheet.getRange(data.rowIndex, clicksColIndex + 1).setValue(currentClicks + 1);
+      }
+
+      // Update per-link click tracking
+      if (linkClicksColIndex >= 0 && clickedUrl) {
+        const linkClicksCell = sheet.getRange(data.rowIndex, linkClicksColIndex + 1);
+        let linkClicks = {};
+
+        // Parse existing JSON
+        const existingValue = linkClicksCell.getValue();
+        if (existingValue) {
+          try {
+            linkClicks = JSON.parse(existingValue);
+          } catch (e) {
+            linkClicks = {};
+          }
+        }
+
+        // Increment count for this URL
+        linkClicks[clickedUrl] = (linkClicks[clickedUrl] || 0) + 1;
+
+        // Save updated JSON
+        linkClicksCell.setValue(JSON.stringify(linkClicks));
       }
     }
   } catch (e) {
@@ -853,6 +881,39 @@ function getCampaignStats() {
 }
 
 /**
+ * Get per-link click statistics
+ */
+function getLinkClickStats() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const linkClicksColIndex = headers.findIndex(h => h === 'Link Clicks');
+
+  if (linkClicksColIndex < 0) {
+    return {};
+  }
+
+  const aggregatedClicks = {};
+
+  for (let i = 1; i < data.length; i++) {
+    const linkClicksJson = data[i][linkClicksColIndex];
+    if (linkClicksJson) {
+      try {
+        const linkClicks = JSON.parse(linkClicksJson);
+        Object.keys(linkClicks).forEach(url => {
+          aggregatedClicks[url] = (aggregatedClicks[url] || 0) + linkClicks[url];
+        });
+      } catch (e) {
+        // Invalid JSON, skip
+      }
+    }
+  }
+
+  return aggregatedClicks;
+}
+
+/**
  * Refresh tracking data manually
  */
 function refreshTrackingData() {
@@ -889,11 +950,28 @@ function showTestEmailDialog() {
 
 function showStatsDialog() {
   const stats = getCampaignStats();
+  const linkClickStats = getLinkClickStats();
+
+  // Build per-link breakdown HTML
+  let linkClicksHtml = '';
+  const linkUrls = Object.keys(linkClickStats);
+  if (linkUrls.length > 0) {
+    linkClicksHtml = '<div class="section"><span class="label">Clicks per Link:</span></div>';
+    linkUrls.sort((a, b) => linkClickStats[b] - linkClickStats[a]); // Sort by clicks descending
+    linkUrls.forEach(url => {
+      const displayUrl = url.length > 40 ? url.substring(0, 40) + '...' : url;
+      linkClicksHtml += `<div class="link-stat"><span class="link-url" title="${url}">${displayUrl}</span>: ${linkClickStats[url]}</div>`;
+    });
+  }
+
   const html = HtmlService.createHtmlOutput(`
     <style>
       body { font-family: Arial, sans-serif; padding: 20px; }
       .stat { margin: 10px 0; }
       .label { font-weight: bold; }
+      .section { margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px; }
+      .link-stat { margin: 5px 0 5px 15px; font-size: 12px; }
+      .link-url { color: #1a73e8; }
     </style>
     <div class="stat"><span class="label">Total Recipients:</span> ${stats.total}</div>
     <div class="stat"><span class="label">Sent:</span> ${stats.sent}</div>
@@ -901,7 +979,8 @@ function showStatsDialog() {
     <div class="stat"><span class="label">Failed:</span> ${stats.failed}</div>
     <div class="stat"><span class="label">Open Rate:</span> ${stats.openRate} (${stats.uniqueOpens} unique opens)</div>
     <div class="stat"><span class="label">Click Rate:</span> ${stats.clickRate} (${stats.uniqueClicks} unique clicks)</div>
-  `).setWidth(400).setHeight(220);
+    ${linkClicksHtml}
+  `).setWidth(450).setHeight(linkUrls.length > 0 ? 300 + (linkUrls.length * 20) : 220);
 
   SpreadsheetApp.getUi().showModalDialog(html, 'Campaign Statistics');
 }

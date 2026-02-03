@@ -34,8 +34,8 @@ function doGet(e) {
       return createPixelResponse();
     } else if (action === 'click' && targetUrl) {
       // Record click and redirect
-      recordClick(trackingId);
       const decodedUrl = decodeURIComponent(targetUrl);
+      recordClick(trackingId, decodedUrl);
       return HtmlService.createHtmlOutput(
         `<script>window.location.href="${decodedUrl}";</script>`
       );
@@ -110,7 +110,7 @@ function batchUpdateTracking(updates) {
     if (update.type === 'open') {
       recordOpen(update.trackingId);
     } else if (update.type === 'click') {
-      recordClick(update.trackingId);
+      recordClick(update.trackingId, update.url);
     }
   });
 }
