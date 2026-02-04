@@ -12,7 +12,12 @@ function onOpen() {
     .addItem('Send Test Email', 'showTestEmailDialog')
     .addSeparator()
     .addItem('Refresh Tracking Data', 'refreshTrackingData')
+    .addItem('Check for Replies', 'checkForReplies')
     .addItem('View Campaign Stats', 'showStatsDialog')
+    .addSeparator()
+    .addSubMenu(SpreadsheetApp.getUi().createMenu('Reply Tracking')
+      .addItem('Enable Auto-Check (Hourly)', 'createReplyCheckTrigger')
+      .addItem('Disable Auto-Check', 'removeReplyCheckTrigger'))
     .addSeparator()
     .addItem('Settings', 'showSettingsDialog')
     .addToUi();
@@ -32,14 +37,15 @@ function showSidebar() {
 // ==================== CONFIGURATION ====================
 
 const CONFIG = {
-  TRACKING_COLUMNS: ['Status', 'Sent At', 'Opens', 'Clicks', 'Link Clicks', 'Last Opened'],
+  TRACKING_COLUMNS: ['Status', 'Sent At', 'Opens', 'Clicks', 'Link Clicks', 'Last Opened', 'Replies', 'Last Reply'],
   STATUS: {
     PENDING: 'PENDING',
     SENT: 'SENT',
     OPEN: 'OPEN',
     FAILED: 'FAILED',
     SCHEDULED: 'SCHEDULED',
-    INVALID: 'INVALID'
+    INVALID: 'INVALID',
+    REPLIED: 'REPLIED'
   },
   STATUS_COLORS: {
     PENDING: '#E0E0E0',   // Light Gray
@@ -47,7 +53,8 @@ const CONFIG = {
     OPEN: '#B7E1CD',      // Light Green
     FAILED: '#F4CCCC',    // Light Red
     SCHEDULED: '#FFE599', // Light Yellow
-    INVALID: '#D9D2E9'    // Light Purple
+    INVALID: '#D9D2E9',   // Light Purple
+    REPLIED: '#C6E0B4'    // Darker Green
   },
   THROTTLE_DELAY: 1000, // 1 second between emails
   EMAIL_COLUMN_NAMES: ['email', 'e-mail', 'email address', 'emailaddress', 'mail'],
@@ -362,7 +369,7 @@ function getAttachmentFromDrive(fileIdOrUrl, rowData, headers) {
 }
 
 /**
- * Send a single email
+ * Send a single email and return thread ID for reply tracking
  */
 function sendSingleEmail(options) {
   const { to, subject, htmlBody, plainBody, fromAlias, attachments, trackingId } = options;
@@ -391,6 +398,20 @@ function sendSingleEmail(options) {
   }
 
   GmailApp.sendEmail(to, subject, plainBody, emailOptions);
+
+  // Get thread ID by searching for the just-sent message
+  let threadId = null;
+  try {
+    Utilities.sleep(500); // Brief delay to ensure message is indexed
+    const threads = GmailApp.search('to:' + to + ' subject:"' + subject + '" in:sent', 0, 1);
+    if (threads.length > 0) {
+      threadId = threads[0].getId();
+    }
+  } catch (e) {
+    console.log('Could not get thread ID: ' + e.message);
+  }
+
+  return { threadId: threadId };
 }
 
 /**
@@ -428,7 +449,13 @@ function sendCampaign(options) {
   const opensColIndex = updatedHeaders.findIndex(h => h === 'Opens');
   const clicksColIndex = updatedHeaders.findIndex(h => h === 'Clicks');
   const linkClicksColIndex = updatedHeaders.findIndex(h => h === 'Link Clicks');
+  const repliesColIndex = updatedHeaders.findIndex(h => h === 'Replies');
+  const lastReplyColIndex = updatedHeaders.findIndex(h => h === 'Last Reply');
   const trackingIdColIndex = ensureTrackingIdColumn(sheet, updatedHeaders);
+
+  // Ensure thread ID column for reply tracking (re-read headers after tracking ID column)
+  const headersAfterTrackingId = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const threadIdColIndex = ensureThreadIdColumn(sheet, headersAfterTrackingId);
 
   // Validate recipients
   const validation = validateRecipients({
@@ -524,8 +551,8 @@ function sendCampaign(options) {
         }
       }
 
-      // Send email
-      sendSingleEmail({
+      // Send email and get thread ID for reply tracking
+      const sendResult = sendSingleEmail({
         to: recipient.email,
         subject: subject,
         htmlBody: htmlBody,
@@ -542,6 +569,14 @@ function sendCampaign(options) {
       sheet.getRange(rowIndex, clicksColIndex + 1).setValue(0);
       sheet.getRange(rowIndex, linkClicksColIndex + 1).setValue('{}');
       sheet.getRange(rowIndex, trackingIdColIndex + 1).setValue(trackingId);
+
+      // Store reply tracking data
+      if (repliesColIndex >= 0) {
+        sheet.getRange(rowIndex, repliesColIndex + 1).setValue(0);
+      }
+      if (sendResult.threadId) {
+        sheet.getRange(rowIndex, threadIdColIndex + 1).setValue(sendResult.threadId);
+      }
 
       // Store tracking data
       storeTrackingData(trackingId, {
@@ -602,6 +637,21 @@ function ensureTrackingIdColumn(sheet, headers) {
   if (colIndex < 0) {
     colIndex = sheet.getLastColumn();
     sheet.getRange(1, colIndex + 1).setValue(trackingIdColName);
+  }
+
+  return colIndex;
+}
+
+/**
+ * Ensure thread ID column exists (for reply tracking)
+ */
+function ensureThreadIdColumn(sheet, headers) {
+  const threadIdColName = '_ThreadId';
+  let colIndex = headers.findIndex(h => h === threadIdColName);
+
+  if (colIndex < 0) {
+    colIndex = sheet.getLastColumn();
+    sheet.getRange(1, colIndex + 1).setValue(threadIdColName);
   }
 
   return colIndex;
@@ -824,18 +874,22 @@ function getCampaignStats() {
   const statusColIndex = headers.findIndex(h => h === 'Status');
   const opensColIndex = headers.findIndex(h => h === 'Opens');
   const clicksColIndex = headers.findIndex(h => h === 'Clicks');
+  const repliesColIndex = headers.findIndex(h => h === 'Replies');
 
   const stats = {
     total: data.length - 1,
     sent: 0,
     open: 0,
+    replied: 0,
     failed: 0,
     pending: 0,
     invalid: 0,
     totalOpens: 0,
     totalClicks: 0,
+    totalReplies: 0,
     uniqueOpens: 0,
-    uniqueClicks: 0
+    uniqueClicks: 0,
+    uniqueReplies: 0
   };
 
   for (let i = 1; i < data.length; i++) {
@@ -843,6 +897,7 @@ function getCampaignStats() {
     const status = row[statusColIndex];
     const opens = row[opensColIndex] || 0;
     const clicks = row[clicksColIndex] || 0;
+    const replies = repliesColIndex >= 0 ? (row[repliesColIndex] || 0) : 0;
 
     switch (status) {
       case CONFIG.STATUS.SENT:
@@ -850,6 +905,9 @@ function getCampaignStats() {
         break;
       case CONFIG.STATUS.OPEN:
         stats.open++;
+        break;
+      case CONFIG.STATUS.REPLIED:
+        stats.replied++;
         break;
       case CONFIG.STATUS.FAILED:
         stats.failed++;
@@ -863,18 +921,22 @@ function getCampaignStats() {
 
     stats.totalOpens += opens;
     stats.totalClicks += clicks;
+    stats.totalReplies += replies;
     if (opens > 0) stats.uniqueOpens++;
     if (clicks > 0) stats.uniqueClicks++;
+    if (replies > 0) stats.uniqueReplies++;
   }
 
-  // Calculate rates (sent + open = total delivered)
-  const totalDelivered = stats.sent + stats.open;
+  // Calculate rates (sent + open + replied = total delivered)
+  const totalDelivered = stats.sent + stats.open + stats.replied;
   if (totalDelivered > 0) {
     stats.openRate = ((stats.uniqueOpens / totalDelivered) * 100).toFixed(1) + '%';
     stats.clickRate = ((stats.uniqueClicks / totalDelivered) * 100).toFixed(1) + '%';
+    stats.replyRate = ((stats.uniqueReplies / totalDelivered) * 100).toFixed(1) + '%';
   } else {
     stats.openRate = '0%';
     stats.clickRate = '0%';
+    stats.replyRate = '0%';
   }
 
   return stats;
@@ -920,6 +982,286 @@ function refreshTrackingData() {
   // This would typically fetch from an external source
   // For now, data is updated in real-time via web app
   SpreadsheetApp.getActiveSpreadsheet().toast('Tracking data is up to date', 'SheetMailer', 3);
+}
+
+// ==================== REPLY TRACKING ====================
+
+/**
+ * Check all sent emails for replies
+ * Scans the active sheet for rows with thread IDs and checks if recipients have replied
+ */
+function checkForReplies() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const threadIdColIndex = headers.findIndex(h => h === '_ThreadId');
+  const statusColIndex = headers.findIndex(h => h === 'Status');
+  const repliesColIndex = headers.findIndex(h => h === 'Replies');
+  const lastReplyColIndex = headers.findIndex(h => h === 'Last Reply');
+
+  if (threadIdColIndex < 0) {
+    SpreadsheetApp.getActiveSpreadsheet().toast('No thread IDs found. Send emails first.', 'Reply Tracking', 3);
+    return { checked: 0, newReplies: 0 };
+  }
+
+  const myEmail = Session.getActiveUser().getEmail();
+  let checked = 0;
+  let newReplies = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const threadId = row[threadIdColIndex];
+    const currentReplies = row[repliesColIndex] || 0;
+
+    if (!threadId) continue;
+
+    checked++;
+
+    try {
+      const thread = GmailApp.getThreadById(threadId);
+      if (!thread) continue;
+
+      const messages = thread.getMessages();
+
+      // Count replies (messages not from me)
+      let replyCount = 0;
+      let lastReplyDate = null;
+
+      for (let j = 0; j < messages.length; j++) {
+        const msg = messages[j];
+        const from = msg.getFrom();
+
+        // Check if the message is not from me (it's a reply)
+        if (!from.includes(myEmail)) {
+          replyCount++;
+          const msgDate = msg.getDate();
+          if (!lastReplyDate || msgDate > lastReplyDate) {
+            lastReplyDate = msgDate;
+          }
+        }
+      }
+
+      // Update if we found new replies
+      if (replyCount > currentReplies) {
+        newReplies += (replyCount - currentReplies);
+
+        if (repliesColIndex >= 0) {
+          sheet.getRange(i + 1, repliesColIndex + 1).setValue(replyCount);
+        }
+
+        if (lastReplyColIndex >= 0 && lastReplyDate) {
+          sheet.getRange(i + 1, lastReplyColIndex + 1).setValue(lastReplyDate);
+        }
+
+        // Update status to REPLIED if currently SENT or OPEN
+        if (statusColIndex >= 0) {
+          const currentStatus = row[statusColIndex];
+          if (currentStatus === CONFIG.STATUS.SENT || currentStatus === CONFIG.STATUS.OPEN) {
+            setStatusWithColor(sheet, i + 1, statusColIndex + 1, CONFIG.STATUS.REPLIED);
+          }
+        }
+      }
+    } catch (e) {
+      console.log('Error checking thread ' + threadId + ': ' + e.message);
+    }
+  }
+
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    'Checked ' + checked + ' emails, found ' + newReplies + ' new replies',
+    'Reply Tracking',
+    5
+  );
+
+  return { checked: checked, newReplies: newReplies };
+}
+
+/**
+ * Create a time-based trigger to check for replies periodically
+ */
+function createReplyCheckTrigger() {
+  // Delete existing reply check triggers
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'checkForRepliesAllSheets') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  // Create new trigger to check every hour
+  ScriptApp.newTrigger('checkForRepliesAllSheets')
+    .timeBased()
+    .everyHours(1)
+    .create();
+
+  SpreadsheetApp.getActiveSpreadsheet().toast('Reply checking scheduled every hour', 'Reply Tracking', 3);
+}
+
+/**
+ * Remove the reply check trigger
+ */
+function removeReplyCheckTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  let removed = 0;
+
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'checkForRepliesAllSheets') {
+      ScriptApp.deleteTrigger(trigger);
+      removed++;
+    }
+  });
+
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    removed > 0 ? 'Reply check trigger removed' : 'No trigger found',
+    'Reply Tracking',
+    3
+  );
+}
+
+/**
+ * Check for replies across all sheets (called by trigger)
+ */
+function checkForRepliesAllSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
+
+  let totalChecked = 0;
+  let totalNewReplies = 0;
+
+  sheets.forEach(sheet => {
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const threadIdColIndex = headers.findIndex(h => h === '_ThreadId');
+
+    // Only process sheets that have thread ID column
+    if (threadIdColIndex >= 0) {
+      const result = checkForRepliesOnSheet(sheet);
+      totalChecked += result.checked;
+      totalNewReplies += result.newReplies;
+    }
+  });
+
+  console.log('Reply check complete: checked ' + totalChecked + ', new replies: ' + totalNewReplies);
+}
+
+/**
+ * Check for replies on a specific sheet
+ */
+function checkForRepliesOnSheet(sheet) {
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const threadIdColIndex = headers.findIndex(h => h === '_ThreadId');
+  const statusColIndex = headers.findIndex(h => h === 'Status');
+  const repliesColIndex = headers.findIndex(h => h === 'Replies');
+  const lastReplyColIndex = headers.findIndex(h => h === 'Last Reply');
+
+  if (threadIdColIndex < 0) {
+    return { checked: 0, newReplies: 0 };
+  }
+
+  const myEmail = Session.getActiveUser().getEmail();
+  let checked = 0;
+  let newReplies = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const threadId = row[threadIdColIndex];
+    const currentReplies = row[repliesColIndex] || 0;
+
+    if (!threadId) continue;
+
+    checked++;
+
+    try {
+      const thread = GmailApp.getThreadById(threadId);
+      if (!thread) continue;
+
+      const messages = thread.getMessages();
+
+      let replyCount = 0;
+      let lastReplyDate = null;
+
+      for (let j = 0; j < messages.length; j++) {
+        const msg = messages[j];
+        const from = msg.getFrom();
+
+        if (!from.includes(myEmail)) {
+          replyCount++;
+          const msgDate = msg.getDate();
+          if (!lastReplyDate || msgDate > lastReplyDate) {
+            lastReplyDate = msgDate;
+          }
+        }
+      }
+
+      if (replyCount > currentReplies) {
+        newReplies += (replyCount - currentReplies);
+
+        if (repliesColIndex >= 0) {
+          sheet.getRange(i + 1, repliesColIndex + 1).setValue(replyCount);
+        }
+
+        if (lastReplyColIndex >= 0 && lastReplyDate) {
+          sheet.getRange(i + 1, lastReplyColIndex + 1).setValue(lastReplyDate);
+        }
+
+        if (statusColIndex >= 0) {
+          const currentStatus = row[statusColIndex];
+          if (currentStatus === CONFIG.STATUS.SENT || currentStatus === CONFIG.STATUS.OPEN) {
+            setStatusWithColor(sheet, i + 1, statusColIndex + 1, CONFIG.STATUS.REPLIED);
+          }
+        }
+      }
+    } catch (e) {
+      console.log('Error checking thread ' + threadId + ': ' + e.message);
+    }
+  }
+
+  return { checked: checked, newReplies: newReplies };
+}
+
+/**
+ * Get reply statistics for the current sheet
+ */
+function getReplyStats() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const statusColIndex = headers.findIndex(h => h === 'Status');
+  const repliesColIndex = headers.findIndex(h => h === 'Replies');
+
+  const stats = {
+    totalReplies: 0,
+    uniqueRepliers: 0,
+    replyRate: '0%'
+  };
+
+  if (repliesColIndex < 0) {
+    return stats;
+  }
+
+  let sentCount = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const status = row[statusColIndex];
+    const replies = row[repliesColIndex] || 0;
+
+    if (status === CONFIG.STATUS.SENT || status === CONFIG.STATUS.OPEN || status === CONFIG.STATUS.REPLIED) {
+      sentCount++;
+      stats.totalReplies += replies;
+      if (replies > 0) {
+        stats.uniqueRepliers++;
+      }
+    }
+  }
+
+  if (sentCount > 0) {
+    stats.replyRate = ((stats.uniqueRepliers / sentCount) * 100).toFixed(1) + '%';
+  }
+
+  return stats;
 }
 
 // ==================== DIALOGS ====================
@@ -972,15 +1314,19 @@ function showStatsDialog() {
       .section { margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px; }
       .link-stat { margin: 5px 0 5px 15px; font-size: 12px; }
       .link-url { color: #1a73e8; }
+      .replied { color: #0d652d; }
     </style>
     <div class="stat"><span class="label">Total Recipients:</span> ${stats.total}</div>
     <div class="stat"><span class="label">Sent:</span> ${stats.sent}</div>
     <div class="stat"><span class="label">Opened:</span> ${stats.open}</div>
+    <div class="stat"><span class="label replied">Replied:</span> ${stats.replied}</div>
     <div class="stat"><span class="label">Failed:</span> ${stats.failed}</div>
+    <div class="section"></div>
     <div class="stat"><span class="label">Open Rate:</span> ${stats.openRate} (${stats.uniqueOpens} unique opens)</div>
     <div class="stat"><span class="label">Click Rate:</span> ${stats.clickRate} (${stats.uniqueClicks} unique clicks)</div>
+    <div class="stat"><span class="label replied">Reply Rate:</span> ${stats.replyRate} (${stats.uniqueReplies} replied)</div>
     ${linkClicksHtml}
-  `).setWidth(450).setHeight(linkUrls.length > 0 ? 300 + (linkUrls.length * 20) : 220);
+  `).setWidth(450).setHeight(linkUrls.length > 0 ? 340 + (linkUrls.length * 20) : 280);
 
   SpreadsheetApp.getUi().showModalDialog(html, 'Campaign Statistics');
 }
